@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Link, Type, Plus, X, ArrowRight, Check, FileText, Brain, Eye } from 'lucide-react';
+import { Upload, Link, Type, Plus, X, ArrowRight, Check, FileText, Brain, Eye, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Button } from './ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -32,7 +32,7 @@ interface KeyConcept {
   selected: boolean;
 }
 
-type Step = 'upload' | 'confirm' | 'topics' | 'concepts' | 'success';
+type Step = 'upload' | 'confirm' | 'success';
 
 export function AddContentModal() {
   const { addContentItem, addConcepts, extractTopicsFromContent } = useContentData();
@@ -54,12 +54,11 @@ export function AddContentModal() {
   
   // Content processing state
   const [contentData, setContentData] = useState<ContentData | null>(null);
-  const [extractedTopics, setExtractedTopics] = useState<string[]>([]);
+  const [extractedTopic, setExtractedTopic] = useState<string>(''); // Single topic instead of array
   const [extractedConcepts, setExtractedConcepts] = useState<KeyConcept[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [newConcept, setNewConcept] = useState('');
   const [newConceptExplanation, setNewConceptExplanation] = useState('');
-  const [newTopic, setNewTopic] = useState('');
 
   const resetModal = () => {
     setCurrentStep('upload');
@@ -70,12 +69,11 @@ export function AddContentModal() {
     setTextContent('');
     setTextTitle('');
     setContentData(null);
-    setExtractedTopics([]);
+    setExtractedTopic('');
     setExtractedConcepts([]);
     setIsProcessing(false);
     setNewConcept('');
     setNewConceptExplanation('');
-    setNewTopic('');
   };
 
   const handleModalClose = () => {
@@ -127,14 +125,15 @@ export function AddContentModal() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Content Processing
+  // Content Processing - now automatically extracts topics
   const confirmFileContent = async () => {
     if (uploadedFiles.length === 0) return;
     
+    setIsProcessing(true);
     const file = uploadedFiles[0].file;
     const reader = new FileReader();
     
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       let content = e.target?.result as string;
       let actualContent = '';
       let preview = '';
@@ -167,7 +166,9 @@ export function AddContentModal() {
       };
       
       setContentData(data);
-      setCurrentStep('confirm');
+      
+      // Auto-extract topic and concepts after processing content
+      await extractTopicAndConceptsFromContentData(data);
     };
     
     // For text files, try to read them; for others, we'll generate content based on filename
@@ -187,13 +188,16 @@ export function AddContentModal() {
       };
       
       setContentData(data);
-      setCurrentStep('confirm');
+      
+      // Auto-extract topic and concepts after processing content
+      await extractTopicAndConceptsFromContentData(data);
     }
   };
 
-  const confirmLinkContent = () => {
+  const confirmLinkContent = async () => {
     if (!linkUrl) return;
     
+    setIsProcessing(true);
     const title = linkTitle || 'Article from ' + new URL(linkUrl).hostname;
     const actualContent = generateRealisticContent(title, 'url', linkUrl);
     const preview = actualContent.length > 300 ? actualContent.substring(0, 300) + '...' : actualContent;
@@ -207,12 +211,15 @@ export function AddContentModal() {
     };
     
     setContentData(data);
-    setCurrentStep('confirm');
+    
+    // Auto-extract topic and concepts after processing content
+    await extractTopicAndConceptsFromContentData(data);
   };
 
-  const confirmTextContent = () => {
+  const confirmTextContent = async () => {
     if (!textContent) return;
     
+    setIsProcessing(true);
     const data: ContentData = {
       title: textTitle || 'Custom Text Content',
       type: 'text',
@@ -221,105 +228,105 @@ export function AddContentModal() {
     };
     
     setContentData(data);
-    setCurrentStep('confirm');
+    
+    // Auto-extract topic and concepts after processing content
+    await extractTopicAndConceptsFromContentData(data);
   };
 
-  const extractTopics = async () => {
-    if (!contentData) return;
-    
-    setIsProcessing(true);
-    
-    // Extract topics using the content manager
+  // New function to extract topic and concepts from content data and navigate to confirm step
+  const extractTopicAndConceptsFromContentData = async (data: ContentData) => {
+    // Extract topics using the content manager - take only the first one
     const topics = extractTopicsFromContent(
-      contentData.title,
-      contentData.content,
-      contentData.url
+      data.title,
+      data.content,
+      data.url
     );
+    
+    // Take only the first topic
+    const primaryTopic = topics.length > 0 ? topics[0] : 'General';
     
     // Simulate AI processing delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    setExtractedTopics(topics);
-    setIsProcessing(false);
-    setCurrentStep('topics');
+    setExtractedTopic(primaryTopic);
+    
+    // Extract concepts as well
+    await extractConceptsForTopic(data, primaryTopic);
   };
 
-  const extractConcepts = async () => {
-    if (!contentData) return;
-    
-    setIsProcessing(true);
-    
-    // Simulate AI processing delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+  const extractConceptsForTopic = async (data: ContentData, topic: string) => {
+    // Simulate AI processing delay for concepts
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     // Extract concepts from headings, key terms, and content structure
     const concepts: KeyConcept[] = [];
-    const content = contentData.content.toLowerCase();
-    const title = contentData.title.toLowerCase();
+    const content = data.content.toLowerCase();
+    const title = data.title.toLowerCase();
     
     // Extract key concepts based on content analysis (focusing on specific learnable elements)
     if (title.includes('react') || content.includes('react') || title.includes('javascript')) {
       concepts.push(
-        { id: '1', concept: 'useState Hook', explanation: 'Hook for managing local state in functional components', category: 'Development', selected: true },
-        { id: '2', concept: 'useEffect Hook', explanation: 'Hook for handling side effects and lifecycle events', category: 'Development', selected: true },
-        { id: '3', concept: 'Custom Hooks', explanation: 'Reusable functions that encapsulate stateful logic', category: 'Development', selected: true },
-        { id: '4', concept: 'Component Props', explanation: 'Data passed from parent to child components', category: 'Development', selected: true }
+        { id: '1', concept: 'useState Hook', explanation: 'Hook for managing local state in functional components', category: topic, selected: true },
+        { id: '2', concept: 'useEffect Hook', explanation: 'Hook for handling side effects and lifecycle events', category: topic, selected: true },
+        { id: '3', concept: 'Custom Hooks', explanation: 'Reusable functions that encapsulate stateful logic', category: topic, selected: true },
+        { id: '4', concept: 'Component Props', explanation: 'Data passed from parent to child components', category: topic, selected: true }
       );
     } else if (title.includes('design') || content.includes('design') || title.includes('ui') || title.includes('ux')) {
       concepts.push(
-        { id: '1', concept: 'Design Tokens', explanation: 'Named entities that store visual design attributes', category: 'Design', selected: true },
-        { id: '2', concept: 'Component Library', explanation: 'Collection of reusable UI components with consistent styling', category: 'Design', selected: true },
-        { id: '3', concept: 'User Journey Mapping', explanation: 'Visual representation of user interactions with a product', category: 'Design', selected: true },
-        { id: '4', concept: 'Accessibility Standards', explanation: 'Guidelines ensuring products are usable by people with disabilities', category: 'Design', selected: true }
+        { id: '1', concept: 'Design Tokens', explanation: 'Named entities that store visual design attributes', category: topic, selected: true },
+        { id: '2', concept: 'Component Library', explanation: 'Collection of reusable UI components with consistent styling', category: topic, selected: true },
+        { id: '3', concept: 'User Journey Mapping', explanation: 'Visual representation of user interactions with a product', category: topic, selected: true },
+        { id: '4', concept: 'Accessibility Standards', explanation: 'Guidelines ensuring products are usable by people with disabilities', category: topic, selected: true }
       );
     } else if (title.includes('machine learning') || title.includes('ai') || content.includes('neural') || content.includes('algorithm')) {
       concepts.push(
-        { id: '1', concept: 'Training Dataset', explanation: 'Collection of labeled examples used to teach machine learning models', category: 'AI/ML', selected: true },
-        { id: '2', concept: 'Model Validation', explanation: 'Process of evaluating model performance on unseen data', category: 'AI/ML', selected: true },
-        { id: '3', concept: 'Overfitting', explanation: 'When a model learns training data too well but fails on new examples', category: 'AI/ML', selected: true },
-        { id: '4', concept: 'Feature Selection', explanation: 'Process of choosing relevant variables for model training', category: 'AI/ML', selected: true }
+        { id: '1', concept: 'Training Dataset', explanation: 'Collection of labeled examples used to teach machine learning models', category: topic, selected: true },
+        { id: '2', concept: 'Model Validation', explanation: 'Process of evaluating model performance on unseen data', category: topic, selected: true },
+        { id: '3', concept: 'Overfitting', explanation: 'When a model learns training data too well but fails on new examples', category: topic, selected: true },
+        { id: '4', concept: 'Feature Selection', explanation: 'Process of choosing relevant variables for model training', category: topic, selected: true }
       );
     } else if (title.includes('learning') || content.includes('memory') || content.includes('retention') || title.includes('study')) {
       concepts.push(
-        { id: '1', concept: 'Active Recall', explanation: 'Testing yourself to retrieve information from memory', category: 'Learning', selected: true },
-        { id: '2', concept: 'Spaced Intervals', explanation: 'Gradually increasing time between review sessions', category: 'Learning', selected: true },
-        { id: '3', concept: 'Elaborative Questioning', explanation: 'Asking "why" and "how" to deepen understanding', category: 'Learning', selected: true },
-        { id: '4', concept: 'Interleaved Practice', explanation: 'Mixing different problem types during study sessions', category: 'Learning', selected: true }
+        { id: '1', concept: 'Active Recall', explanation: 'Testing yourself to retrieve information from memory', category: topic, selected: true },
+        { id: '2', concept: 'Spaced Intervals', explanation: 'Gradually increasing time between review sessions', category: topic, selected: true },
+        { id: '3', concept: 'Elaborative Questioning', explanation: 'Asking "why" and "how" to deepen understanding', category: topic, selected: true },
+        { id: '4', concept: 'Interleaved Practice', explanation: 'Mixing different problem types during study sessions', category: topic, selected: true }
       );
     } else if (title.includes('leadership') || content.includes('management') || content.includes('team')) {
       concepts.push(
-        { id: '1', concept: 'Growth Mindset', explanation: 'Belief that abilities can be developed through effort and learning', category: 'Leadership', selected: true },
-        { id: '2', concept: 'Psychological Safety', explanation: 'Team environment where members feel safe to take risks and make mistakes', category: 'Leadership', selected: true },
-        { id: '3', concept: 'Delegation Framework', explanation: 'Structured approach to assigning tasks and responsibilities', category: 'Leadership', selected: true },
-        { id: '4', concept: 'Feedback Loops', explanation: 'Regular cycles of giving and receiving constructive feedback', category: 'Leadership', selected: true }
+        { id: '1', concept: 'Growth Mindset', explanation: 'Belief that abilities can be developed through effort and learning', category: topic, selected: true },
+        { id: '2', concept: 'Psychological Safety', explanation: 'Team environment where members feel safe to take risks and make mistakes', category: topic, selected: true },
+        { id: '3', concept: 'Delegation Framework', explanation: 'Structured approach to assigning tasks and responsibilities', category: topic, selected: true },
+        { id: '4', concept: 'Feedback Loops', explanation: 'Regular cycles of giving and receiving constructive feedback', category: topic, selected: true }
       );
     } else if (title.includes('api') || content.includes('rest') || content.includes('endpoint')) {
       concepts.push(
-        { id: '1', concept: 'HTTP Status Codes', explanation: 'Standardized codes indicating the result of HTTP requests', category: 'Development', selected: true },
-        { id: '2', concept: 'Request/Response Cycle', explanation: 'The flow of data between client and server', category: 'Development', selected: true },
-        { id: '3', concept: 'Authentication Methods', explanation: 'Techniques for verifying user identity in API calls', category: 'Development', selected: true },
-        { id: '4', concept: 'Rate Limiting', explanation: 'Controlling the frequency of API requests from users', category: 'Development', selected: true }
+        { id: '1', concept: 'HTTP Status Codes', explanation: 'Standardized codes indicating the result of HTTP requests', category: topic, selected: true },
+        { id: '2', concept: 'Request/Response Cycle', explanation: 'The flow of data between client and server', category: topic, selected: true },
+        { id: '3', concept: 'Authentication Methods', explanation: 'Techniques for verifying user identity in API calls', category: topic, selected: true },
+        { id: '4', concept: 'Rate Limiting', explanation: 'Controlling the frequency of API requests from users', category: topic, selected: true }
       );
     } else {
       // Extract concepts from headings and key terms in content
-      const extractedConcepts = extractConceptsFromContent(contentData.content, contentData.title);
+      const extractedConcepts = extractConceptsFromContent(data.content, data.title);
       if (extractedConcepts.length > 0) {
-        concepts.push(...extractedConcepts);
+        concepts.push(...extractedConcepts.map(c => ({ ...c, category: topic })));
       } else {
         // Fallback to generic but specific concepts
-        const category = extractedTopics.length > 0 ? extractedTopics[0] : 'General';
         concepts.push(
-          { id: '1', concept: 'Core Framework', explanation: `The main structural approach presented in ${contentData.title}`, category, selected: true },
-          { id: '2', concept: 'Implementation Strategy', explanation: 'Step-by-step method for applying the concepts', category, selected: true },
-          { id: '3', concept: 'Success Metrics', explanation: 'Measurable indicators of effective application', category, selected: true }
+          { id: '1', concept: 'Core Framework', explanation: `The main structural approach presented in ${data.title}`, category: topic, selected: true },
+          { id: '2', concept: 'Implementation Strategy', explanation: 'Step-by-step method for applying the concepts', category: topic, selected: true },
+          { id: '3', concept: 'Success Metrics', explanation: 'Measurable indicators of effective application', category: topic, selected: true }
         );
       }
     }
     
     setExtractedConcepts(concepts);
     setIsProcessing(false);
-    setCurrentStep('concepts');
+    setCurrentStep('confirm');
   };
+
+
 
   // Extract specific learnable concepts from content structure
   const extractConceptsFromContent = (content: string, title: string): KeyConcept[] => {
@@ -348,7 +355,7 @@ export function AddContentModal() {
           if (!concept.toLowerCase().includes('the ') && 
               !concepts.some(c => c.concept.toLowerCase() === concept.toLowerCase())) {
             
-            const category = extractedTopics.length > 0 ? extractedTopics[0] : 'General';
+            const category = extractedTopic || 'General';
             concepts.push({
               id: conceptId.toString(),
               concept: concept.charAt(0).toUpperCase() + concept.slice(1),
@@ -374,29 +381,11 @@ export function AddContentModal() {
     );
   };
 
-  const toggleTopic = (index: number) => {
-    setExtractedTopics(prev => prev.filter((_, i) => i !== index));
+  const removeConcept = (id: string) => {
+    setExtractedConcepts(prev => prev.filter(concept => concept.id !== id));
   };
 
-  const addCustomTopic = () => {
-    if (!newTopic.trim()) return;
-    
-    // Limit to 4 words
-    const words = newTopic.trim().split(/\s+/);
-    if (words.length > 4) {
-      return; // Don't add if more than 4 words
-    }
-    
-    const formattedTopic = words.map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    ).join(' ');
-    
-    if (!extractedTopics.includes(formattedTopic)) {
-      setExtractedTopics(prev => [...prev, formattedTopic]);
-    }
-    
-    setNewTopic('');
-  };
+
 
   const addCustomConcept = () => {
     if (!newConcept.trim()) return;
@@ -405,7 +394,7 @@ export function AddContentModal() {
       id: Date.now().toString(),
       concept: newConcept.trim(),
       explanation: newConceptExplanation.trim() || 'Custom concept added by user',
-      category: 'Custom',
+      category: extractedTopic || 'General',
       selected: true
     };
     
@@ -621,7 +610,7 @@ The comprehensive coverage ensures readers gain both foundational knowledge and 
       fileName: contentData.fileName,
       fileSize: fileSize,
       preview: contentData.preview,
-      topics: extractedTopics,
+      topics: extractedTopic ? [extractedTopic] : [],
       tags: [] // Could be enhanced to extract tags from content
     });
     
@@ -655,10 +644,10 @@ The comprehensive coverage ensures readers gain both foundational knowledge and 
     return false;
   };
 
-  const handleConfirmContent = () => {
-    if (activeTab === 'files') confirmFileContent();
-    if (activeTab === 'links') confirmLinkContent();
-    if (activeTab === 'text') confirmTextContent();
+  const handleConfirmContent = async () => {
+    if (activeTab === 'files') await confirmFileContent();
+    if (activeTab === 'links') await confirmLinkContent();
+    if (activeTab === 'text') await confirmTextContent();
   };
 
   return (
@@ -668,12 +657,12 @@ The comprehensive coverage ensures readers gain both foundational knowledge and 
     }}>
       <DialogTrigger asChild>
         <Button 
-          className="flex items-center space-x-2 rounded-xl text-white"
-          style={{ backgroundColor: '#2852E9' }}
+          className="flex items-center space-x-2 rounded-xl text-blue-600 border-2 border-white/30 hover:border-white hover:bg-white/90 hover:text-blue-700 transition-all duration-200 shadow-sm"
+          style={{ backgroundColor: '#ffffff', color: '#2852E9' }}
         >
           <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Add Content</span>
-          <span className="sm:hidden">Add</span>
+          <span className="hidden sm:inline font-semibold">Add Content</span>
+          <span className="sm:hidden font-semibold">Add</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -681,9 +670,7 @@ The comprehensive coverage ensures readers gain both foundational knowledge and 
           <DialogTitle>Add New Content</DialogTitle>
           <DialogDescription>
             {currentStep === 'upload' && 'Upload files, paste links, or add text to expand your learning library'}
-            {currentStep === 'confirm' && 'Review and confirm your content before extracting topics'}
-            {currentStep === 'topics' && 'Confirm the key topics extracted from your content (max 4 words each)'}
-            {currentStep === 'concepts' && 'Select the key concepts you want to track and learn'}
+            {currentStep === 'confirm' && 'Confirm the topic and select key concepts you want to track and learn'}
             {currentStep === 'success' && 'Content successfully added to your library!'}
           </DialogDescription>
         </DialogHeader>
@@ -698,25 +685,11 @@ The comprehensive coverage ensures readers gain both foundational knowledge and 
               <span className="text-sm font-medium whitespace-nowrap">Upload</span>
             </div>
             <div className="w-8 h-px bg-gray-200"></div>
-            <div className={`flex items-center space-x-2 ${currentStep === 'confirm' ? 'text-blue-600' : (currentStep === 'topics' || currentStep === 'concepts') ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep === 'confirm' ? 'bg-blue-100 text-blue-600' : (currentStep === 'topics' || currentStep === 'concepts') ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                {currentStep === 'confirm' ? '2' : (currentStep === 'topics' || currentStep === 'concepts') ? '✓' : '2'}
+            <div className={`flex items-center space-x-2 ${currentStep === 'confirm' ? 'text-blue-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep === 'confirm' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+                2
               </div>
-              <span className="text-sm font-medium whitespace-nowrap">Confirm</span>
-            </div>
-            <div className="w-8 h-px bg-gray-200"></div>
-            <div className={`flex items-center space-x-2 ${currentStep === 'topics' ? 'text-blue-600' : currentStep === 'concepts' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep === 'topics' ? 'bg-blue-100 text-blue-600' : currentStep === 'concepts' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                {currentStep === 'topics' ? '3' : currentStep === 'concepts' ? '✓' : '3'}
-              </div>
-              <span className="text-sm font-medium whitespace-nowrap">Key Topics</span>
-            </div>
-            <div className="w-8 h-px bg-gray-200"></div>
-            <div className={`flex items-center space-x-2 ${currentStep === 'concepts' ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep === 'concepts' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
-                4
-              </div>
-              <span className="text-sm font-medium whitespace-nowrap">Key Concepts</span>
+              <span className="text-sm font-medium whitespace-nowrap">Confirm Topic & Key Concepts</span>
             </div>
           </div>
         )}
@@ -844,177 +817,111 @@ The comprehensive coverage ensures readers gain both foundational knowledge and 
               </div>
             </Tabs>
 
-            {/* Confirm Content Button */}
-            <div className="flex justify-end mt-6">
-              <Button 
-                onClick={handleConfirmContent}
-                disabled={!canConfirmContent()}
-                className="text-white"
-                style={{ backgroundColor: '#2852E9' }}
-              >
-                Confirm Content
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {currentStep === 'confirm' && contentData && (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Eye className="h-5 w-5" />
-                  <span>Review Content</span>
-                </CardTitle>
-                <CardDescription>Confirm the details before extracting key concepts</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Title</label>
-                  <p className="text-lg font-medium">{contentData.title}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Type</label>
-                  <div className="mt-1">
-                    <Badge variant="outline" className="text-xs">
-                      {contentData.type === 'file' && <FileText className="h-3 w-3 mr-1" />}
-                      {contentData.type === 'url' && <Link className="h-3 w-3 mr-1" />}
-                      {contentData.type === 'text' && <Type className="h-3 w-3 mr-1" />}
-                      {contentData.type.toUpperCase()}
-                    </Badge>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Preview</label>
-                  <div className="mt-2 p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-700">{contentData.preview}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="flex space-x-4">
-              <Button variant="outline" onClick={() => setCurrentStep('upload')}>
-                <ArrowRight className="h-4 w-4 mr-2 rotate-180" />
-                Back to Upload
-              </Button>
-              <Button 
-                onClick={extractTopics}
-                disabled={isProcessing}
-                className="flex-1 text-white"
-                style={{ backgroundColor: '#2852E9' }}
-              >
-                {isProcessing ? (
-                  <>
-                    <Brain className="h-4 w-4 mr-2 animate-pulse" />
-                    Extracting Topics...
-                  </>
-                ) : (
-                  <>
-                    Extract Topics
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {currentStep === 'topics' && (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-medium mb-4">Confirm Key Topics</h3>
-              <p className="text-sm text-gray-600 mb-6">
-                These topics help organize your content. Each topic should be 3-4 words maximum. You can remove unwanted topics or add new ones.
-              </p>
-
-              <div className="space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {extractedTopics.map((topic, index) => (
-                    <div key={index} className="flex items-center space-x-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
-                      <span className="text-sm font-medium">{topic}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleTopic(index)}
-                        className="h-4 w-4 p-0 hover:bg-yellow-100"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
+            {/* Content Preview (shown after processing) */}
+            {contentData && isProcessing && (
+              <div className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Brain className="h-5 w-5 animate-pulse" />
+                      <span>Processing Content...</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                     </div>
-                  ))}
-                  {extractedTopics.length === 0 && (
-                    <p className="text-sm text-gray-500 italic">No topics were automatically detected. Add some below.</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {contentData && !isProcessing && currentStep === 'upload' && (
+              <div className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Eye className="h-5 w-5" />
+                      <span>Content Preview</span>
+                    </CardTitle>
+                    <CardDescription>Content processed and topics are being extracted</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Title</label>
+                      <p className="text-lg font-medium">{contentData.title}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Type</label>
+                      <div className="mt-1">
+                        <Badge variant="outline" className="text-xs">
+                          {contentData.type === 'file' && <FileText className="h-3 w-3 mr-1" />}
+                          {contentData.type === 'url' && <Link className="h-3 w-3 mr-1" />}
+                          {contentData.type === 'text' && <Type className="h-3 w-3 mr-1" />}
+                          {contentData.type.toUpperCase()}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Summary</label>
+                      <div className="mt-2 p-4 bg-gray-50 rounded-lg">
+                        <p className="text-sm text-gray-700">{contentData.preview}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Confirm Content Button */}
+            {!contentData && (
+              <div className="flex justify-end mt-6">
+                <Button 
+                  onClick={handleConfirmContent}
+                  disabled={!canConfirmContent() || isProcessing}
+                  className="text-white"
+                  style={{ backgroundColor: '#2852E9' }}
+                >
+                  {isProcessing ? (
+                    <>
+                      <Brain className="h-4 w-4 mr-2 animate-pulse" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      Process Content
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </>
                   )}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+
+
+
+
+        {currentStep === 'confirm' && (
+          <div className="space-y-6">
+            {/* Topic Section */}
+            <div>
+              <h3 className="text-lg font-medium mb-4">Confirm Topic</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                This topic will organize your content and concepts.
+              </p>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                <div className="flex items-center space-x-2">
+                  <div className="bg-blue-100 rounded-full px-3 py-1">
+                    <span className="text-sm font-medium text-blue-800">{extractedTopic || 'General'}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Add Custom Topic */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Add Custom Topic</CardTitle>
-                <CardDescription>Add topics that weren't automatically detected (max 4 words)</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Input 
-                  placeholder="Topic name (e.g., Machine Learning, Communication, Design)"
-                  value={newTopic}
-                  onChange={(e) => setNewTopic(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addCustomTopic();
-                    }
-                  }}
-                />
-                <div className="text-xs text-gray-500">
-                  {newTopic.trim().split(/\s+/).length > 4 && newTopic.trim() && (
-                    <span className="text-red-500">Maximum 4 words allowed</span>
-                  )}
-                </div>
-                <Button 
-                  onClick={addCustomTopic}
-                  disabled={!newTopic.trim() || newTopic.trim().split(/\s+/).length > 4}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Topic
-                </Button>
-              </CardContent>
-            </Card>
-
-            <div className="flex space-x-4">
-              <Button variant="outline" onClick={() => setCurrentStep('confirm')}>
-                <ArrowRight className="h-4 w-4 mr-2 rotate-180" />
-                Back to Review
-              </Button>
-              <Button 
-                onClick={extractConcepts}
-                className="flex-1 text-white"
-                style={{ backgroundColor: '#2852E9' }}
-                disabled={isProcessing}
-              >
-                {isProcessing ? (
-                  <>
-                    <Brain className="h-4 w-4 mr-2 animate-pulse" />
-                    Extracting Key Concepts...
-                  </>
-                ) : (
-                  <>
-                    Continue to Concepts
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {currentStep === 'concepts' && (
-          <div className="space-y-6">
+            {/* Concepts Section */}
             <div>
               <h3 className="text-lg font-medium mb-4">Select Key Concepts</h3>
               <p className="text-sm text-gray-600 mb-6">
@@ -1023,7 +930,7 @@ The comprehensive coverage ensures readers gain both foundational knowledge and 
 
               <div className="space-y-4">
                 {extractedConcepts.map((concept) => (
-                  <Card key={concept.id} className={`cursor-pointer transition-colors ${concept.selected ? 'ring-2 ring-blue-accent bg-blue-50' : 'hover:bg-gray-50'}`}>
+                  <Card key={concept.id} className={`transition-colors ${concept.selected ? 'ring-2 ring-blue-accent bg-blue-50' : 'hover:bg-gray-50'}`}>
                     <CardContent className="p-4">
                       <div className="flex items-start space-x-3">
                         <Checkbox 
@@ -1037,6 +944,17 @@ The comprehensive coverage ensures readers gain both foundational knowledge and 
                           </div>
                           <p className="text-sm text-gray-600">{concept.explanation}</p>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeConcept(concept.id);
+                          }}
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -1058,9 +976,9 @@ The comprehensive coverage ensures readers gain both foundational knowledge and 
                 />
                 <Textarea 
                   placeholder="Concept explanation (optional)"
+                  rows={3}
                   value={newConceptExplanation}
                   onChange={(e) => setNewConceptExplanation(e.target.value)}
-                  rows={2}
                 />
                 <Button 
                   onClick={addCustomConcept}
@@ -1069,15 +987,22 @@ The comprehensive coverage ensures readers gain both foundational knowledge and 
                   className="w-full"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Custom Concept
+                  Add Concept
                 </Button>
               </CardContent>
             </Card>
 
+            {/* Navigation */}
             <div className="flex space-x-4">
-              <Button variant="outline" onClick={() => setCurrentStep('topics')}>
+              <Button variant="outline" onClick={() => {
+                // Reset to upload step and clear processed data
+                setCurrentStep('upload');
+                setContentData(null);
+                setExtractedTopic('');
+                setExtractedConcepts([]);
+              }}>
                 <ArrowRight className="h-4 w-4 mr-2 rotate-180" />
-                Back to Topics
+                Back to Upload
               </Button>
               <Button 
                 onClick={saveContent}
@@ -1085,12 +1010,14 @@ The comprehensive coverage ensures readers gain both foundational knowledge and 
                 style={{ backgroundColor: '#2852E9' }}
                 disabled={extractedConcepts.filter(c => c.selected).length === 0}
               >
-                Save to Library & Concept Vault
+                Save Content & Concepts
                 <Check className="h-4 w-4 ml-2" />
               </Button>
             </div>
           </div>
         )}
+
+
 
         {currentStep === 'success' && (
           <div className="text-center py-8">

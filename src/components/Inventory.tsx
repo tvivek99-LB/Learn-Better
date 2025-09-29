@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
   FileText, 
@@ -51,9 +51,11 @@ import { Checkbox } from './ui/checkbox';
 
 interface InventoryProps {
   onBackToHome: () => void;
+  preselectedTopic?: string | null;
+  onClearPreselectedTopic?: () => void;
 }
 
-export function Inventory({ onBackToHome }: InventoryProps) {
+export function Inventory({ onBackToHome, preselectedTopic, onClearPreselectedTopic }: InventoryProps) {
   const { topics, calculateTopicRetention } = useTopicData();
   const { contentItems, toggleRetentionPlan: toggleRetention, deleteContentItem } = useContentData();
   const [searchTerm, setSearchTerm] = useState('');
@@ -66,6 +68,21 @@ export function Inventory({ onBackToHome }: InventoryProps) {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const itemsPerPage = 9;
+
+  // Handle preselected topic from homepage navigation
+  useEffect(() => {
+    if (preselectedTopic) {
+      // Find the topic ID that matches the topic name
+      const topic = topics.find(t => t.name === preselectedTopic);
+      if (topic) {
+        setSelectedTopics(new Set([topic.id]));
+        // Clear the preselected topic after applying it
+        if (onClearPreselectedTopic) {
+          onClearPreselectedTopic();
+        }
+      }
+    }
+  }, [preselectedTopic, topics, onClearPreselectedTopic]);
 
   const handleToggleRetentionPlan = (itemId: string) => {
     toggleRetention(itemId);
@@ -813,6 +830,12 @@ export function Inventory({ onBackToHome }: InventoryProps) {
                   toggleTopicFilter(topicData.id);
                 }
               }}
+              selectedTopicsFromParent={
+                // Convert selected topic IDs to topic names
+                Array.from(selectedTopics)
+                  .map(topicId => topics.find(t => t.id === topicId)?.name)
+                  .filter(name => name !== undefined) as string[]
+              }
             />
           </div>
         </div>

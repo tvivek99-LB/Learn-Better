@@ -39,11 +39,7 @@ export function ContentImportModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md mx-auto bg-gradient-to-br from-blue-50 via-white to-purple-50 border border-blue-200/60 shadow-2xl">
-        {/* Decorative shapes */}
-        <div className="absolute top-4 right-4 w-6 h-6 bg-yellow-400 rounded-full opacity-80"></div>
-        <div className="absolute bottom-4 left-4 w-4 h-4 bg-green-500 rounded-full opacity-70"></div>
-        <div className="absolute top-8 left-6 w-3 h-3 bg-pink-500 rotate-45 opacity-75"></div>
+      <DialogContent className="max-w-md mx-auto bg-white border border-gray-200 shadow-2xl">
         
         <DialogHeader className="text-center space-y-4 relative z-10">
           {/* Success Icon */}
@@ -61,13 +57,13 @@ export function ContentImportModal({
 
         <div className="space-y-6 relative z-10">
           {/* Import Summary */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl p-5 border border-blue-200/60 shadow-sm">
+          <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 shadow-sm">
             <div className="flex items-start space-x-3 mb-4">
-              <Sparkles className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <Sparkles className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#2852E9' }} />
               <div className="flex-1">
-                <h3 className="text-blue-800 mb-2">Import Summary</h3>
+                <h3 className="mb-2" style={{ color: '#2852E9' }}>Import Summary</h3>
                 <div className="flex items-baseline space-x-2">
-                  <div className="text-3xl text-blue-700 leading-none">{importedContentCount}</div>
+                  <div className="text-3xl leading-none" style={{ color: '#2852E9' }}>{importedContentCount}</div>
                   <div className="text-gray-700">
                     {importedContentCount === 1 ? 'article has' : 'articles have'} been imported
                   </div>
@@ -80,14 +76,14 @@ export function ContentImportModal({
           </div>
 
           {/* Retention Plan Info */}
-          <div className="bg-gradient-to-r from-purple-100 to-blue-100 rounded-xl p-4 border border-purple-200/60">
+          <div className="rounded-xl p-4 border border-gray-200" style={{ backgroundColor: '#FAF5D7' }}>
             <div className="flex items-start space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: '#2852E9' }}>
                 <Brain className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h4 className="text-purple-800 mb-1">Smart Retention Planning</h4>
-                <p className="text-sm text-purple-700">
+                <h4 className="mb-1" style={{ color: '#2852E9' }}>Smart Retention Planning</h4>
+                <p className="text-sm text-gray-700">
                   Our AI will analyze your content and create personalized spaced repetition exercises to maximize your learning retention.
                 </p>
               </div>
@@ -98,7 +94,8 @@ export function ContentImportModal({
           <div className="flex flex-col sm:flex-row gap-3">
             <Button
               onClick={handleNavigateToLibrary}
-              className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+              className="flex-1 rounded-xl text-white shadow-lg hover:shadow-xl transition-all duration-200"
+              style={{ backgroundColor: '#2852E9' }}
             >
               <Brain className="w-4 h-4 mr-2" />
               Manage Retention Plan
@@ -133,15 +130,10 @@ export function ContentImportModal({
           </div>
 
           {/* Tip */}
-          <div className="bg-yellow-50 rounded-xl p-3 border border-yellow-200">
-            <div className="flex items-start space-x-2">
-              <div className="w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-white text-xs">💡</span>
-              </div>
-              <p className="text-xs text-yellow-800">
-                <strong>Pro tip:</strong> Visit your Library regularly to review concepts and track your learning progress across all imported materials.
-              </p>
-            </div>
+          <div className="rounded-xl p-3 border" style={{ backgroundColor: '#FFFBE6', borderColor: '#F3E7B9' }}>
+            <p className="text-xs" style={{ color: '#B45309' }}>
+              <strong>Pro tip:</strong> Visit your Library regularly to review concepts and track your learning progress across all imported materials.
+            </p>
           </div>
         </div>
       </DialogContent>

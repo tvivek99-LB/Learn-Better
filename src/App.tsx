@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { MotivationalGreeting } from './components/MotivationalGreeting';
 import { CompactRetentionGraph } from './components/CompactRetentionGraph';
+import { RetentionOverviewPage } from './components/RetentionOverviewPage';
 import { TodaysPracticeSession } from './components/TodaysPracticeSession';
 
 import { TrendingArticles } from './components/TrendingArticles';
@@ -17,7 +18,7 @@ import { ContentDataProvider } from './components/ContentDataManager';
 import { Button } from './components/ui/button';
 
 
-type View = 'home' | 'my-content' | 'concept-vault' | 'retention' | 'stats';
+type View = 'home' | 'my-content' | 'concept-vault' | 'retention' | 'retention-overview' | 'stats';
 
 function AppContent() {
   const { topics, getTopicRetentionData } = useTopicData();
@@ -30,6 +31,9 @@ function AppContent() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importedContentCount, setImportedContentCount] = useState(7); // Demo: 7 articles imported
   const [dontRemindImports, setDontRemindImports] = useState(false);
+  
+  // Topic filter state for navigating from homepage to My Content
+  const [preselectedTopic, setPreselectedTopic] = useState<string | null>(null);
   
 
 
@@ -47,11 +51,17 @@ function AppContent() {
 
   const navigateToLibrary = () => {
     // Library is now a dropdown, default to My Content
+    setPreselectedTopic(null); // Clear any preselected topic for normal navigation
     setCurrentView('my-content');
     setShowImportModal(false); // Close modal when navigating
   };
 
-  const navigateToMyContent = () => {
+  const navigateToMyContent = (topicName?: string) => {
+    if (topicName) {
+      setPreselectedTopic(topicName);
+    } else {
+      setPreselectedTopic(null);
+    }
     setCurrentView('my-content');
     setShowImportModal(false); // Close modal when navigating
   };
@@ -73,6 +83,10 @@ function AppContent() {
 
   const navigateToStats = () => {
     setCurrentView('stats');
+  };
+
+  const navigateToRetentionOverview = () => {
+    setCurrentView('retention-overview');
   };
 
   // Keyboard shortcuts
@@ -145,6 +159,29 @@ function AppContent() {
 
 
 
+  // Render retention overview page as a completely separate view
+  if (currentView === 'retention-overview') {
+    return (
+      <div className="min-h-screen bg-white">
+        <Header 
+          currentView={currentView}
+          onNavigateToHome={navigateToHome}
+          onNavigateToLibrary={navigateToLibrary}
+          onNavigateToMyContent={navigateToMyContent}
+          onNavigateToConceptVault={navigateToConceptVault}
+          onNavigateToStats={navigateToStats}
+        />
+        
+        <main className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
+          <RetentionOverviewPage 
+            onBack={navigateToHome}
+            onTopicClick={navigateToConceptVault}
+          />
+        </main>
+      </div>
+    );
+  }
+
   // Render stats page as a completely separate view
   if (currentView === 'stats') {
     return (
@@ -203,7 +240,9 @@ function AppContent() {
               {/* Right Quarter: Compact Retention Graph */}
               <div className="space-y-4 flex flex-col">
                 <div className="flex-1">
-                  <CompactRetentionGraph onTopicClick={navigateToConceptVault} />
+                  <CompactRetentionGraph 
+                    onTopicClick={(topicName) => navigateToMyContent(topicName)} 
+                  />
                 </div>
               </div>
             </div>
@@ -217,7 +256,11 @@ function AppContent() {
             />
           </div>
         ) : currentView === 'my-content' ? (
-          <Inventory onBackToHome={navigateToHome} />
+          <Inventory 
+            onBackToHome={navigateToHome} 
+            preselectedTopic={preselectedTopic}
+            onClearPreselectedTopic={() => setPreselectedTopic(null)}
+          />
         ) : currentView === 'concept-vault' ? (
           <ConceptVault />
         ) : null}

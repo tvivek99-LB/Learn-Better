@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { BookOpen, Lightbulb, Calendar, Tag, FileText, Brain, Target, ArrowLeft, File, Link, Type, Plus, Minus, CheckSquare } from 'lucide-react';
+import { BookOpen, Lightbulb, Calendar, Tag, FileText, Brain, Target, ArrowLeft, File, Link, Type, Plus, Minus, CheckSquare, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -29,7 +29,8 @@ export function ConceptVault({ onBackToHome }: ConceptVaultProps) {
     clearConceptSelection,
     addSelectedConceptsToRetentionPlan,
     removeSelectedConceptsFromRetentionPlan,
-    toggleConceptRetentionPlan
+    toggleConceptRetentionPlan,
+    deleteConcept
   } = useContentData();
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [expandedArticles, setExpandedArticles] = useState<Set<string>>(new Set());
@@ -560,6 +561,17 @@ export function ConceptVault({ onBackToHome }: ConceptVaultProps) {
                                         <Button
                                           variant="ghost"
                                           size="sm"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            deleteConcept(concept.id);
+                                          }}
+                                          className="flex-shrink-0 rounded-lg h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
                                           onClick={() => toggleCardExpansion(concept.id)}
                                           className="flex-shrink-0 rounded-lg text-xs"
                                           style={{ color: '#2852E9' }}
@@ -820,6 +832,17 @@ export function ConceptVault({ onBackToHome }: ConceptVaultProps) {
                                           style={{ color: concept.inRetentionPlan ? '#8E8E93' : '#2852E9' }}
                                         >
                                           {concept.inRetentionPlan ? '−' : '+'}
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            deleteConcept(concept.id);
+                                          }}
+                                          className="flex-shrink-0 rounded-lg h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
                                         </Button>
                                         <Button
                                           variant="ghost"
